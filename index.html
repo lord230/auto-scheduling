@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2c3e50;
+            --background: #ffffff;
+            --surface: #f8f9fa;
+            --text: #2c3e50;
+            --text-light: #7f8c8d;
+            --border: #e0e0e0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --accent: #9b59b6;
+            --drag-bg: rgba(52, 152, 219, 0.2);
+            --drag-border: #3498db;
+            --collision-bg: rgba(231, 76, 60, 0.2);
+            --collision-border: #e74c3c;
+        }
+
+        [data-theme="dark"] {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #009fc7;
+            --background: #121212;
+            --surface: #1e1e1e;
+            --text: #00c8fa;
+            --text-light: #bdc3c7;
+            --border: #333333;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --accent: #9b59b6;
+            --drag-bg: rgba(52, 152, 219, 0.3);
+            --drag-border: #3498db;
+            --collision-bg: rgba(231, 76, 60, 0.3);
+            --collision-border: #e74c3c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 2px solid white;
+            color: white;
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        main {
+            flex: 1;
+            padding: 30px 0;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-section {
+            background-color: var(--surface);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px var(--shadow);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--background);
+            color: var(--text);
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--border);
+            margin: 25px 0;
+        }
+
+        .teacher-section {
+            margin-top: 20px;
+        }
+
+        .teacher-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .teacher-card {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .teacher-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+
+        .teacher-card h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background-color: #34495e;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-accent {
+            background-color: var(--accent);
+        }
+
+        .btn-accent:hover {
+            background-color: #8e44ad;
+        }
+
+        .btn-redo {
+            background-color: var(--accent);
+        }
+
+        .btn-redo:hover {
+            background-color: #8e44ad;
+        }
+
+        .result-section {
+            background-color: var(--surface);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px var(--shadow);
+            display: none;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .result-header h2 {
+            color: var(--primary);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .timetable-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .timetable-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .notification {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .notification-success {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .notification-warning {
+            background-color: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
+        }
+
+        .notification-danger {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .class-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .class-card {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .class-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .class-card h4 {
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .class-card .section-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .section-badge {
+            background-color: var(--primary);
+            color: white;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+        }
+
+        footer {
+            background-color: var(--surface);
+            padding: 20px 0;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background-color: var(--surface);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover .file-upload-label {
+            border-color: var(--primary);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .file-upload-info {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .upload-section {
+            background-color: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .upload-section h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .sample-format {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: rgba(52, 152, 219, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .sample-format h4 {
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .sample-table-container {
+            overflow-x: auto;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 500px;
+        }
+
+        .sample-table th, .sample-table td {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .sample-table th {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        [data-theme="dark"] .sample-format {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        [data-theme="dark"] .sample-table-container {
+            border-color: #444;
+        }
+
+        [data-theme="dark"] .sample-table th {
+            background-color: var(--primary-dark);
+        }
+
+        [data-theme="dark"] .sample-table td {
+            border-color: #444;
+            background-color: var(--background);
+        }
+
+        .draggable {
+            cursor: move;
+            user-select: none;
+        }
+
+        .draggable:hover {
+            background-color: var(--drag-bg);
+            border: 2px dashed var(--drag-border);
+        }
+
+        .dragging {
+            opacity: 0.5;
+        }
+
+        .drag-over {
+            background-color: var(--drag-bg);
+            border: 2px dashed var(--drag-border);
+        }
+
+        .collision {
+            background-color: var(--collision-bg);
+            border: 2px dashed var(--collision-border);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+            }
+        }
+
+        .drag-info {
+            background-color: var(--surface);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .drag-info h3 {
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .drag-info ul {
+            padding-left: 20px;
+        }
+
+        .drag-info li {
+            margin-bottom: 5px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .teacher-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .result-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .timetable-selector {
+                flex-direction: column;
+            }
+            
+            table {
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 10px;
+            }
+            
+            .sample-table-container {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>School Timetable Generator</h1>
+            <button class="theme-toggle" id="themeToggle">
+                <span class="icon">🌙</span>
+                <span>Dark Mode</span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="form-section" id="formSection">
+                <div class="form-group">
+                    <label for="schoolName">Enter School Name:</label>
+                    <input type="text" id="schoolName" placeholder="Enter school name">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="numTeachers">Number of Teachers</label>
+                        <input type="number" id="numTeachers" min="1" max="100" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label for="numClasses">Number of Classes</label>
+                        <input type="number" id="numClasses" min="1" max="20" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="numSections">Sections per Class</label>
+                        <input type="number" id="numSections" min="1" max="10" value="3">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="periodsPerDay">Number of periods per day</label>
+                        <input type="number" id="periodsPerDay" min="1" max="12" value="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="periodLength">Length of each period (minutes)</label>
+                        <input type="number" id="periodLength" min="15" max="120" value="40" step="5">
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="upload-section">
+                    <h3>Upload Teacher List</h3>
+                    <div class="file-upload">
+                        <input type="file" id="teacherFile" accept=".xlsx,.xls,.csv">
+                        <div class="file-upload-label">
+                            <span class="icon">📁</span>
+                            <span>Choose Excel or CSV file</span>
+                        </div>
+                    </div>
+                    <div class="file-upload-info">
+                        Supported formats: .xlsx, .xls, .csv
+                    </div>
+                    
+                    <div class="sample-format">
+                        <h4>Sample Format:</h4>
+                        <p>Your file should have columns for "Name" and "Subject". Optionally, you can include "Classes/Week" and "Class Duration (minutes)".</p>
+                        <div class="sample-table-container">
+                            <table class="sample-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Subject</th>
+                                        <th>Classes/Week</th>
+                                        <th>Class Duration (minutes)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Mr. Sharma</td>
+                                        <td>Mathematics</td>
+                                        <td>20</td>
+                                        <td>40</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mr. Bose</td>
+                                        <td>English</td>
+                                        <td>18</td>
+                                        <td>40</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="teacher-section" id="teacherSection">
+                    <div class="teacher-header">
+                        <h2>Add Teachers</h2>
+                        <div>
+                            <button class="btn btn-secondary" id="addTeacherBtn">
+                                <span class="icon">➕</span>
+                                Add Teacher
+                            </button>
+                            <button class="btn btn-danger" id="clearTeachersBtn">
+                                <span class="icon">🗑️</span>
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="teachersContainer">
+                        <!-- Teacher cards will be dynamically added here -->
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 30px;">
+                    <button class="btn" id="generateBtn">
+                        <span class="icon">📊</span>
+                        Generate Timetable
+                    </button>
+                </div>
+            </div>
+
+            <div class="result-section" id="resultSection">
+                <div class="result-header">
+                    <h2 id="resultTitle"></h2>
+                    <div class="result-actions">
+                        <button class="btn btn-redo" id="redoBtn">
+                            <span class="icon">🔄</span>
+                            Redo Timetable
+                        </button>
+                        <button class="btn btn-secondary" id="editBtn">
+                            <span class="icon">✏️</span>
+                            Edit Teachers
+                        </button>
+                        <button class="btn btn-success" id="downloadBtn">
+                            <span class="icon">⬇️</span>
+                            Download CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="timetable-selector">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="classSelect">Select Class</label>
+                        <select id="classSelect"></select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="sectionSelect">Select Section</label>
+                        <select id="sectionSelect"></select>
+                    </div>
+                </div>
+                
+                <div class="drag-info">
+                    <h3>Drag & Drop Instructions</h3>
+                    <ul>
+                        <li>Drag any class to a different period to reschedule</li>
+                        <li>System will automatically detect teacher collisions</li>
+                        <li>Same subject won't be scheduled consecutively</li>
+                        <li>Same subject won't be repeated in the same day</li>
+                        <li>Collisions are highlighted in red</li>
+                    </ul>
+                </div>
+                
+                <div id="notificationContainer"></div>
+                <div class="timetable-container">
+                    <table id="timetableTable"></table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Indian School Timetable Generator. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Constants
+        const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+        
+        // DOM Elements
+        const themeToggle = document.getElementById('themeToggle');
+        const schoolNameInput = document.getElementById('schoolName');
+        const numTeachersInput = document.getElementById('numTeachers');
+        const numClassesInput = document.getElementById('numClasses');
+        const numSectionsInput = document.getElementById('numSections');
+        const periodsPerDayInput = document.getElementById('periodsPerDay');
+        const periodLengthInput = document.getElementById('periodLength');
+        const teacherFileInput = document.getElementById('teacherFile');
+        const addTeacherBtn = document.getElementById('addTeacherBtn');
+        const clearTeachersBtn = document.getElementById('clearTeachersBtn');
+        const teachersContainer = document.getElementById('teachersContainer');
+        const generateBtn = document.getElementById('generateBtn');
+        const resultSection = document.getElementById('resultSection');
+        const resultTitle = document.getElementById('resultTitle');
+        const classSelect = document.getElementById('classSelect');
+        const sectionSelect = document.getElementById('sectionSelect');
+        const timetableTable = document.getElementById('timetableTable');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const editBtn = document.getElementById('editBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const notificationContainer = document.getElementById('notificationContainer');
+        const formSection = document.getElementById('formSection');
+        const teacherSection = document.getElementById('teacherSection');
+        
+        // State
+        let teachers = [];
+        let teacherCount = 0;
+        let timetableData = {};
+        let draggedElement = null;
+        let sourceData = {};
+        let currentTeacherData = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggle.innerHTML = '<span class="icon">☀️</span><span>Light Mode</span>';
+            }
+            
+            // Add initial teacher
+            addTeacherCard();
+            
+            // Event listeners
+            themeToggle.addEventListener('click', toggleTheme);
+            addTeacherBtn.addEventListener('click', addTeacherCard);
+            clearTeachersBtn.addEventListener('click', clearAllTeachers);
+            generateBtn.addEventListener('click', generateTimetable);
+            downloadBtn.addEventListener('click', downloadCSV);
+            editBtn.addEventListener('click', showFormSection);
+            redoBtn.addEventListener('click', redoTimetable);
+            classSelect.addEventListener('change', displaySelectedTimetable);
+            sectionSelect.addEventListener('change', displaySelectedTimetable);
+            teacherFileInput.addEventListener('change', handleFileUpload);
+            
+            // Update number of teachers when input changes
+            numTeachersInput.addEventListener('change', updateTeacherCount);
+        });
+        
+        // Generate sections array based on number of sections
+        function generateSections(numSections) {
+            const sections = [];
+            for (let i = 0; i < numSections; i++) {
+                sections.push(String.fromCharCode(65 + i)); // A, B, C, ...
+            }
+            return sections;
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            if (newTheme === 'dark') {
+                themeToggle.innerHTML = '<span class="icon">☀️</span><span>Light Mode</span>';
+            } else {
+                themeToggle.innerHTML = '<span class="icon">🌙</span><span>Dark Mode</span>';
+            }
+        }
+        
+        // Show Form Section
+        function showFormSection() {
+            formSection.classList.remove('hidden');
+            teacherSection.classList.remove('hidden');
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Update Teacher Count
+        function updateTeacherCount() {
+            const count = parseInt(numTeachersInput.value);
+            const currentCount = teachers.length;
+            
+            if (count > currentCount) {
+                for (let i = 0; i < count - currentCount; i++) {
+                    addTeacherCard();
+                }
+            } else if (count < currentCount) {
+                for (let i = currentCount - 1; i >= count; i--) {
+                    removeTeacherCard(teachers[i].id);
+                }
+            }
+        }
+        
+        // Clear All Teachers
+        function clearAllTeachers() {
+            if (teachers.length === 0) {
+                showNotification('No teachers to clear.', 'warning');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to remove all teachers?')) {
+                teachersContainer.innerHTML = '';
+                teachers = [];
+                teacherCount = 0;
+                showNotification('All teachers removed.', 'success');
+            }
+        }
+        
+        // Add Teacher Card
+        function addTeacherCard() {
+            teacherCount++;
+            const teacherCard = document.createElement('div');
+            teacherCard.className = 'teacher-card';
+            teacherCard.id = `teacher-${teacherCount}`;
+            
+            teacherCard.innerHTML = `
+                <h3>Teacher ${teacherCount}</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="teacherName${teacherCount}">Name</label>
+                        <input type="text" id="teacherName${teacherCount}" placeholder="Teacher name">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacherSubject${teacherCount}">Subject</label>
+                        <input type="text" id="teacherSubject${teacherCount}" placeholder="Subject name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="teacherClassesPerWeek${teacherCount}">Classes/Week</label>
+                        <input type="number" id="teacherClassesPerWeek${teacherCount}" min="1" value="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacherMinutesPerClass${teacherCount}">Class Duration (minutes)</label>
+                        <input type="number" id="teacherMinutesPerClass${teacherCount}" min="10" max="300" step="5" value="40">
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn btn-danger" onclick="removeTeacherCard(${teacherCount})">
+                        <span class="icon">🗑️</span>
+                        Remove
+                    </button>
+                </div>
+            `;
+            
+            teachersContainer.appendChild(teacherCard);
+            teachers.push({
+                id: teacherCount,
+                name: '',
+                subject: '',
+                classesPerWeek: 20,
+                minutesPerClass: 40
+            });
+            
+            // Animate the new card
+            setTimeout(() => {
+                teacherCard.style.animation = 'fadeIn 0.5s ease-out';
+            }, 10);
+        }
+        
+        // Remove Teacher Card
+        function removeTeacherCard(id) {
+            const teacherCard = document.getElementById(`teacher-${id}`);
+            teacherCard.style.animation = 'fadeOut 0.3s ease-out';
+            
+            setTimeout(() => {
+                teacherCard.remove();
+                teachers = teachers.filter(t => t.id !== id);
+            }, 300);
+        }
+        
+        // Handle File Upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data = [];
+                    
+                    if (file.name.endsWith('.csv')) {
+                        // Parse CSV
+                        const text = e.target.result;
+                        const lines = text.split('\n');
+                        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                        
+                        for (let i = 1; i < lines.length; i++) {
+                            if (lines[i].trim() === '') continue;
+                            
+                            const values = lines[i].split(',').map(v => v.trim());
+                            const teacher = {};
+                            
+                            headers.forEach((header, index) => {
+                                if (header.includes('name')) teacher.name = values[index];
+                                if (header.includes('subject')) teacher.subject = values[index];
+                                if (header.includes('classes') || header.includes('week')) {
+                                    teacher.classesPerWeek = parseInt(values[index]) || 20;
+                                }
+                                if (header.includes('duration') || header.includes('minutes')) {
+                                    teacher.minutesPerClass = parseInt(values[index]) || 40;
+                                }
+                            });
+                            
+                            if (teacher.name && teacher.subject) {
+                                data.push(teacher);
+                            }
+                        }
+                    } else {
+                        // Parse Excel
+                        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        data = jsonData.map(row => ({
+                            name: row.Name || row.name || '',
+                            subject: row.Subject || row.subject || '',
+                            classesPerWeek: parseInt(row['Classes/Week'] || row['Classes Per Week'] || row.classesPerWeek || 20),
+                            minutesPerClass: parseInt(row['Class Duration (minutes)'] || row['Class Duration'] || row.minutesPerClass || 40)
+                        })).filter(t => t.name && t.subject);
+                    }
+                    
+                    if (data.length === 0) {
+                        showNotification('No valid teacher data found in the file.', 'warning');
+                        return;
+                    }
+                    
+                    // Clear existing teachers
+                    teachersContainer.innerHTML = '';
+                    teachers = [];
+                    teacherCount = 0;
+                    
+                    // Add teachers from file
+                    data.forEach(teacher => {
+                        teacherCount++;
+                        const teacherCard = document.createElement('div');
+                        teacherCard.className = 'teacher-card';
+                        teacherCard.id = `teacher-${teacherCount}`;
+                        
+                        teacherCard.innerHTML = `
+                            <h3>Teacher ${teacherCount}</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="teacherName${teacherCount}">Name</label>
+                                    <input type="text" id="teacherName${teacherCount}" value="${teacher.name}" placeholder="Teacher name">
+                                </div>
+                                <div class="form-group">
+                                    <label for="teacherSubject${teacherCount}">Subject</label>
+                                    <input type="text" id="teacherSubject${teacherCount}" value="${teacher.subject}" placeholder="Subject name">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="teacherClassesPerWeek${teacherCount}">Classes/Week</label>
+                                    <input type="number" id="teacherClassesPerWeek${teacherCount}" min="1" value="${teacher.classesPerWeek}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="teacherMinutesPerClass${teacherCount}">Class Duration (minutes)</label>
+                                    <input type="number" id="teacherMinutesPerClass${teacherCount}" min="10" max="300" step="5" value="${teacher.minutesPerClass}">
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px; text-align: right;">
+                                <button class="btn btn-danger" onclick="removeTeacherCard(${teacherCount})">
+                                    <span class="icon">🗑️</span>
+                                    Remove
+                                </button>
+                            </div>
+                        `;
+                        
+                        teachersContainer.appendChild(teacherCard);
+                        teachers.push({
+                            id: teacherCount,
+                            name: teacher.name,
+                            subject: teacher.subject,
+                            classesPerWeek: teacher.classesPerWeek,
+                            minutesPerClass: teacher.minutesPerClass
+                        });
+                    });
+                    
+                    // Update number of teachers input
+                    numTeachersInput.value = teachers.length;
+                    
+                    showNotification(`Successfully imported ${teachers.length} teachers from the file.`, 'success');
+                } catch (error) {
+                    console.error('Error parsing file:', error);
+                    showNotification('Error parsing the file. Please check the format.', 'danger');
+                }
+            };
+            
+            if (file.name.endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        }
+        
+        // Generate Timetable
+        function generateTimetable() {
+            // Clear previous notifications
+            notificationContainer.innerHTML = '';
+            
+            // Validate school name
+            const schoolName = schoolNameInput.value.trim();
+            if (!schoolName) {
+                showNotification('Please enter the school name.', 'warning');
+                return;
+            }
+            
+            // Get school structure
+            const numClasses = parseInt(numClassesInput.value);
+            const numSections = parseInt(numSectionsInput.value);
+            const periodsPerDay = parseInt(periodsPerDayInput.value);
+            const periodLength = parseInt(periodLengthInput.value);
+            
+            // Collect teacher data
+            currentTeacherData = [];
+            let hasInvalidTeacher = false;
+            
+            teachers.forEach(teacher => {
+                const nameInput = document.getElementById(`teacherName${teacher.id}`);
+                const subjectInput = document.getElementById(`teacherSubject${teacher.id}`);
+                const classesInput = document.getElementById(`teacherClassesPerWeek${teacher.id}`);
+                const minutesInput = document.getElementById(`teacherMinutesPerClass${teacher.id}`);
+                
+                const name = nameInput.value.trim();
+                const subject = subjectInput.value.trim();
+                const classesPerWeek = parseInt(classesInput.value);
+                const minutesPerClass = parseInt(minutesInput.value);
+                
+                if (!name || !subject) {
+                    hasInvalidTeacher = true;
+                    return;
+                }
+                
+                currentTeacherData.push({
+                    name,
+                    subject,
+                    classesPerWeek,
+                    minutesPerClass
+                });
+            });
+            
+            if (hasInvalidTeacher) {
+                showNotification('Please fill all teacher names and subjects.', 'warning');
+                return;
+            }
+            
+            if (currentTeacherData.length === 0) {
+                showNotification('Please add at least one teacher.', 'warning');
+                return;
+            }
+            
+            // Generate timetable
+            timetableData = generateTimetableData(numClasses, numSections, periodsPerDay, periodLength, currentTeacherData);
+            
+            // Populate class and section selectors
+            populateSelectors(numClasses, numSections);
+            
+            // Display timetable for the first class and section
+            displaySelectedTimetable();
+            
+            // Hide form section and show result section
+            formSection.classList.add('hidden');
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // Show success notification
+            showNotification(`Timetable for ${schoolName} generated successfully!`, 'success');
+        }
+        
+        // Redo Timetable
+        function redoTimetable() {
+            if (currentTeacherData.length === 0) {
+                showNotification('No teacher data available. Please generate a timetable first.', 'warning');
+                return;
+            }
+            
+            // Get school structure
+            const numClasses = parseInt(numClassesInput.value);
+            const numSections = parseInt(numSectionsInput.value);
+            const periodsPerDay = parseInt(periodsPerDayInput.value);
+            const periodLength = parseInt(periodLengthInput.value);
+            
+            // Generate new timetable with the same teacher data
+            timetableData = generateTimetableData(numClasses, numSections, periodsPerDay, periodLength, currentTeacherData);
+            
+            // Display timetable for the current class and section
+            displaySelectedTimetable();
+            
+            // Show success notification
+            showNotification('Timetable reshuffled successfully!', 'success');
+        }
+        
+        // Generate Timetable Data
+        function generateTimetableData(numClasses, numSections, periodsPerDay, periodLength, teachers) {
+            // Generate sections array dynamically
+            const sections = generateSections(numSections);
+            
+            // Initialize timetable structure: {class: {section: {day: [periods]}}}
+            const timetable = {};
+            
+            for (let c = 1; c <= numClasses; c++) {
+                timetable[c] = {};
+                for (let s = 0; s < numSections; s++) {
+                    const section = sections[s];
+                    timetable[c][section] = {};
+                    for (const day of WEEKDAYS) {
+                        timetable[c][section][day] = Array(periodsPerDay).fill("Free");
+                    }
+                }
+            }
+            
+            // Create a list of all possible slots
+            const allSlots = [];
+            for (let c = 1; c <= numClasses; c++) {
+                for (let s = 0; s < numSections; s++) {
+                    const section = sections[s];
+                    for (const day of WEEKDAYS) {
+                        for (let p = 0; p < periodsPerDay; p++) {
+                            allSlots.push([c, section, day, p]);
+                        }
+                    }
+                }
+            }
+            
+            // Shuffle the slots randomly
+            shuffleArray(allSlots);
+            
+            // For each teacher, try to allocate the required number of classes
+            for (const teacher of teachers) {
+                const blocksNeeded = Math.ceil(teacher.minutesPerClass / periodLength);
+                const totalSlotsNeeded = teacher.classesPerWeek;
+                
+                let allocations = 0;
+                let attempts = 0;
+                
+                while (allocations < totalSlotsNeeded && attempts < 1000) {
+                    attempts++;
+                    
+                    // Randomly pick a slot
+                    const [c, section, day, start] = allSlots[Math.floor(Math.random() * allSlots.length)];
+                    
+                    // Check if the block is free
+                    let canAllocate = true;
+                    for (let i = 0; i < blocksNeeded; i++) {
+                        if (start + i >= periodsPerDay || timetable[c][section][day][start + i] !== "Free") {
+                            canAllocate = false;
+                            break;
+                        }
+                    }
+                    
+                    // Check for teacher collision
+                    if (canAllocate) {
+                        for (let s = 0; s < numSections; s++) {
+                            if (s === sections.indexOf(section)) continue;
+                            
+                            for (let i = 0; i < blocksNeeded; i++) {
+                                if (timetable[c][sections[s]][day][start + i] !== "Free") {
+                                    const content = timetable[c][sections[s]][day][start + i];
+                                    const teacherInCell = extractTeacher(content);
+                                    if (teacherInCell === teacher.name) {
+                                        canAllocate = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!canAllocate) break;
+                        }
+                    }
+                    
+                    // Check for consecutive same subject
+                    if (canAllocate) {
+                        for (let i = 0; i < blocksNeeded; i++) {
+                            if (start + i > 0 && timetable[c][section][day][start + i - 1] !== "Free") {
+                                const prevContent = timetable[c][section][day][start + i - 1];
+                                const prevSubject = extractSubject(prevContent);
+                                if (prevSubject === teacher.subject) {
+                                    canAllocate = false;
+                                    break;
+                                }
+                            }
+                            
+                            if (start + i < periodsPerDay - 1 && timetable[c][section][day][start + i + 1] !== "Free") {
+                                const nextContent = timetable[c][section][day][start + i + 1];
+                                const nextSubject = extractSubject(nextContent);
+                                if (nextSubject === teacher.subject) {
+                                    canAllocate = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Check for same subject already in the day
+                    if (canAllocate) {
+                        for (let p = 0; p < periodsPerDay; p++) {
+                            if (timetable[c][section][day][p] !== "Free") {
+                                const content = timetable[c][section][day][p];
+                                const subjectInCell = extractSubject(content);
+                                if (subjectInCell === teacher.subject) {
+                                    canAllocate = false;
+                                    break;
+                                }
+                            }
+                            if (!canAllocate) break;
+                        }
+                    }
+                    
+                    if (canAllocate) {
+                        const label = `${teacher.subject} (${teacher.name})`;
+                        for (let i = 0; i < blocksNeeded; i++) {
+                            timetable[c][section][day][start + i] = label;
+                        }
+                        allocations++;
+                    }
+                }
+            }
+            
+            return timetable;
+        }
+        
+        // Shuffle Array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        // Populate Class and Section Selectors
+        function populateSelectors(numClasses, numSections) {
+            // Generate sections array dynamically
+            const sections = generateSections(numSections);
+            
+            // Clear previous options
+            classSelect.innerHTML = '';
+            sectionSelect.innerHTML = '';
+            
+            // Populate class selector
+            for (let c = 1; c <= numClasses; c++) {
+                const option = document.createElement('option');
+                option.value = c;
+                option.textContent = `Class ${c}`;
+                classSelect.appendChild(option);
+            }
+            
+            // Populate section selector
+            for (let s = 0; s < numSections; s++) {
+                const option = document.createElement('option');
+                option.value = sections[s];
+                option.textContent = `Section ${sections[s]}`;
+                sectionSelect.appendChild(option);
+            }
+        }
+        
+        // Display Selected Timetable
+        function displaySelectedTimetable() {
+            const selectedClass = classSelect.value;
+            const selectedSection = sectionSelect.value;
+            
+            if (!selectedClass || !selectedSection || !timetableData) return;
+            
+            // Set result title
+            resultTitle.textContent = `${schoolNameInput.value} - Class ${selectedClass} Section ${selectedSection}`;
+            
+            // Clear previous table
+            timetableTable.innerHTML = '';
+            
+            // Create header row
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>Day</th>';
+            for (let i = 0; i < parseInt(periodsPerDayInput.value); i++) {
+                headerRow.innerHTML += `<th>Period ${i + 1}</th>`;
+            }
+            timetableTable.appendChild(headerRow);
+            
+            // Add rows for each day
+            for (const day of WEEKDAYS) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><strong>${day}</strong></td>`;
+                
+                const periods = timetableData[selectedClass][selectedSection][day];
+                for (let i = 0; i < periods.length; i++) {
+                    const cell = document.createElement('td');
+                    cell.textContent = periods[i];
+                    
+                    // Make non-free cells draggable
+                    if (periods[i] !== "Free") {
+                        cell.classList.add('draggable');
+                        cell.draggable = true;
+                        
+                        // Add drag event listeners
+                        cell.addEventListener('dragstart', handleDragStart);
+                        cell.addEventListener('dragover', handleDragOver);
+                        cell.addEventListener('drop', handleDrop);
+                        cell.addEventListener('dragend', handleDragEnd);
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                timetableTable.appendChild(row);
+            }
+        }
+        
+        // Drag and Drop Handlers
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            
+            const row = this.parentNode;
+            const day = row.cells[0].textContent;
+            const periodIndex = Array.from(row.cells).indexOf(this) - 1; // because first cell is day
+            const classNum = classSelect.value;
+            const section = sectionSelect.value;
+            
+            sourceData = {
+                day: day,
+                period: periodIndex,
+                class: classNum,
+                section: section,
+                content: this.textContent
+            };
+            
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+            
+            return false;
+        }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (draggedElement !== this) {
+                const targetRow = this.parentNode;
+                const targetDay = targetRow.cells[0].textContent;
+                const targetPeriodIndex = Array.from(targetRow.cells).indexOf(this) - 1;
+                const targetClass = classSelect.value;
+                const targetSection = sectionSelect.value;
+                
+                const targetData = {
+                    day: targetDay,
+                    period: targetPeriodIndex,
+                    class: targetClass,
+                    section: targetSection,
+                    content: this.textContent
+                };
+                
+                // Check if the move is valid
+                const isValid = validateMove(sourceData, targetData);
+                
+                if (isValid) {
+                    // Perform the swap
+                    swapInTimetable(sourceData, targetData);
+                    
+                    // Update the display
+                    displaySelectedTimetable();
+                    
+                    showNotification('Timetable updated successfully!', 'success');
+                } else {
+                    // Highlight collision
+                    this.classList.add('collision');
+                    setTimeout(() => {
+                        this.classList.remove('collision');
+                    }, 2000);
+                    
+                    showNotification('Cannot move class due to scheduling conflict.', 'warning');
+                }
+            }
+            
+            this.classList.remove('drag-over');
+            return false;
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // Remove drag-over class from all cells
+            const cells = timetableTable.querySelectorAll('.drag-over');
+            cells.forEach(cell => {
+                cell.classList.remove('drag-over');
+            });
+        }
+        
+        // Validate Move
+        function validateMove(source, target) {
+            // Extract teacher and subject from source
+            const sourceTeacher = extractTeacher(source.content);
+            const sourceSubject = extractSubject(source.content);
+            
+            // Check if target is free
+            if (target.content === "Free") {
+                // Check for teacher collision
+                if (isTeacherColliding(sourceTeacher, target.day, target.period, target.class, target.section)) {
+                    return false;
+                }
+                
+                // Check for consecutive same subject
+                if (isConsecutiveSubject(sourceSubject, target.day, target.period, target.class, target.section)) {
+                    return false;
+                }
+                
+                // Check for same subject in the same day
+                if (isSubjectInSameDay(sourceSubject, target.day, target.class, target.section)) {
+                    return false;
+                }
+                
+                return true;
+            } else {
+                // Target is occupied, check if swap is possible
+                const targetTeacher = extractTeacher(target.content);
+                const targetSubject = extractSubject(target.content);
+                
+                // Check teacher collisions
+                if (isTeacherColliding(sourceTeacher, target.day, target.period, target.class, target.section) ||
+                    isTeacherColliding(targetTeacher, source.day, source.period, source.class, source.section)) {
+                    return false;
+                }
+                
+                // Check consecutive subjects
+                if (isConsecutiveSubject(sourceSubject, target.day, target.period, target.class, target.section) ||
+                    isConsecutiveSubject(targetSubject, source.day, source.period, source.class, source.section)) {
+                    return false;
+                }
+                
+                // Check for same subject in the same day
+                if (isSubjectInSameDay(sourceSubject, target.day, target.class, target.section) ||
+                    isSubjectInSameDay(targetSubject, source.day, source.class, source.section)) {
+                    return false;
+                }
+                
+                return true;
+            }
+        }
+        
+        // Swap in Timetable
+        function swapInTimetable(source, target) {
+            const sourceClassData = timetableData[source.class][source.section];
+            const targetClassData = timetableData[target.class][target.section];
+            
+            // Swap the contents
+            const temp = sourceClassData[source.day][source.period];
+            sourceClassData[source.day][source.period] = targetClassData[target.day][target.period];
+            targetClassData[target.day][target.period] = temp;
+        }
+        
+        // Extract Teacher from Content
+        function extractTeacher(content) {
+            // Content is like "Mathematics (Mr. Sharma)"
+            const match = content.match(/\((.*?)\)/);
+            return match ? match[1] : '';
+        }
+        
+        // Extract Subject from Content
+        function extractSubject(content) {
+            // Content is like "Mathematics (Mr. Sharma)"
+            const match = content.match(/^(.*?)\s*\(/);
+            return match ? match[1].trim() : '';
+        }
+        
+        // Check for Teacher Collision
+        function isTeacherColliding(teacher, day, period, excludeClass, excludeSection) {
+            // Get the number of sections from the timetable data
+            const numSections = Object.keys(timetableData[excludeClass]).length;
+            const sections = generateSections(numSections);
+            
+            // Check all class-sections except the excluded one
+            for (const classNum in timetableData) {
+                for (const section of sections) {
+                    if (classNum == excludeClass && section == excludeSection) continue;
+                    
+                    if (!timetableData[classNum][section]) continue;
+                    
+                    const classData = timetableData[classNum][section];
+                    if (classData[day] && classData[day][period] !== "Free") {
+                        const content = classData[day][period];
+                        const teacherInCell = extractTeacher(content);
+                        if (teacherInCell === teacher) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        // Check for Consecutive Subject
+        function isConsecutiveSubject(subject, day, period, classNum, section) {
+            const classData = timetableData[classNum][section];
+            if (!classData || !classData[day]) return false;
+            
+            const periods = classData[day];
+            
+            // Check previous period
+            if (period > 0) {
+                const prevContent = periods[period - 1];
+                if (prevContent !== "Free") {
+                    const prevSubject = extractSubject(prevContent);
+                    if (prevSubject === subject) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Check next period
+            if (period < periods.length - 1) {
+                const nextContent = periods[period + 1];
+                if (nextContent !== "Free") {
+                    const nextSubject = extractSubject(nextContent);
+                    if (nextSubject === subject) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // Check for Subject in Same Day
+        function isSubjectInSameDay(subject, day, classNum, section) {
+            const classData = timetableData[classNum][section];
+            if (!classData || !classData[day]) return false;
+            
+            const periods = classData[day];
+            
+            for (let i = 0; i < periods.length; i++) {
+                if (periods[i] !== "Free") {
+                    const content = periods[i];
+                    const subjectInCell = extractSubject(content);
+                    if (subjectInCell === subject) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // Download CSV
+        function downloadCSV() {
+            const schoolName = schoolNameInput.value.trim();
+            const selectedClass = classSelect.value;
+            const selectedSection = sectionSelect.value;
+            
+            if (!selectedClass || !selectedSection) {
+                showNotification('Please select a class and section to download.', 'warning');
+                return;
+            }
+            
+            const periodsPerDay = parseInt(periodsPerDayInput.value);
+            
+            // Create CSV content
+            let csv = `Timetable for ${schoolName} - Class ${selectedClass} Section ${selectedSection}\n\n`;
+            csv += 'Day,' + Array.from({length: periodsPerDay}, (_, i) => `Period ${i + 1}`).join(',') + '\n';
+            
+            for (const day of WEEKDAYS) {
+                const row = [day];
+                const periods = timetableData[selectedClass][selectedSection][day];
+                for (let i = 0; i < periods.length; i++) {
+                    row.push(periods[i]);
+                }
+                csv += row.join(',') + '\n';
+            }
+            
+            // Create a blob and trigger download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${schoolName}_Class${selectedClass}_Section${selectedSection}_timetable.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Timetable downloaded successfully!', 'success');
+        }
+        
+        // Show Notification
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            let icon = '';
+            if (type === 'success') icon = '✅';
+            if (type === 'warning') icon = '⚠️';
+            if (type === 'danger') icon = '❌';
+            
+            notification.innerHTML = `
+                <span class="icon">${icon}</span>
+                <span>${message}</span>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.5s ease-out';
+                setTimeout(() => {
+                    notification.remove();
+                }, 500);
+            }, 5000);
+        }
+        
+        // CSS Animation for fadeOut
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
